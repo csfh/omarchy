@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# omarchy:summary=Print screensaver field colours from a theme colors.toml
+# omarchy:group=screensaver
+# omarchy:name=theme
+# omarchy:args=[colors.toml]
+# omarchy:hidden=true
+
+toml_hex() {
+  local file=$1
+  local key=$2
+  local line value
+
+  [[ -f $file ]] || return 1
+  line=$(grep -E "^${key}[[:space:]]*=" "$file" | head -n 1) || return 1
+  if [[ $line =~ \#([0-9A-Fa-f]{6}) ]]; then
+    printf '%s' "#${BASH_REMATCH[1],,}"
+    return 0
+  fi
+  return 1
+}
+
+hex_to_rgb() {
+  local hex=${1#\#}
+  printf '%d %d %d' "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+rgb_to_hex() {
+  printf '#%02x%02x%02x' "$1" "$2" "$3"
+}
+
+mix_hex() {
+  local from=$1
+  local to=$2
+  local t=$3
+  local fr fg fb tr tg tb
+
+  read -r fr fg fb <<<"$(hex_to_rgb "$from")"
+  read -r tr tg tb <<<"$(hex_to_rgb "$to")"
+  rgb_to_hex \
+    $(((fr * (100 - t) + tr * t) / 100)) \
+    $(((fg * (100 - t) + tg * t) / 100)) \
+    $(((fb * (100 - t) + tb * t) / 100))
+}
+
+hex_to_osc() {
+  local hex=${1#\#}
+  printf 'rgb:%s/%s/%s' "${hex:0:2}" "${hex:2:2}" "${hex:4:2}"
+}
+
+screensaver_theme_from_colors() {
+  local file=$1
+  local mode accent background lit dim mid hover crest toward
+
+  mode=$(grep -E '^mode[[:space:]]*=' "$file" | head -n 1 | sed -E 's/.*=[[:space:]]*"?([^"#]+)"?.*/\1/' | tr -d '[:space:]')
+  mode=${mode:-dark}
+
+  background=$(toml_hex "$file" darker_background || toml_hex "$file" dark_background || toml_hex "$file" background) || return 1
+  lit=$(toml_hex "$file" accent) || return 1
+
+  dim=$(mix_hex "$lit" "$background" 25)
+  mid=$(mix_hex "$lit" "$background" 50)
+
+  if [[ $mode == "light" ]]; then
+    toward=$background
+  else
+    toward=$(toml_hex "$file" bright_foreground || toml_hex "$file" foreground || printf '%s' "$lit")
+  fi
+
+  hover=$(mix_hex "$lit" "$toward" 35)
+  crest=$(mix_hex "$lit" "$toward" 70)
+
+  SCREENSAVER_BG=$background
+  SCREENSAVER_LIT=$lit
+  SCREENSAVER_PALETTE="$dim,$mid,$lit,$hover,$crest"
+  SCREENSAVER_OSC=$(hex_to_osc "$background")
+}
+
+default_colors_file() {
+  local staged=$HOME/.local/state/omarchy/current/theme/colors.toml
+
+  if [[ -f $staged ]]; then
+    printf '%s' "$staged"
+    return 0
+  fi
+  return 1
+}
+
+ttfx_supports_palette() {
+  command -v ttfx >/dev/null || return 1
+  ttfx --help 2>/dev/null | grep -q -- '--palette'
+}
+
+if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
+  return 0
+fi
+
+set -euo pipefail
+
+colors_file=${1:-}
+if [[ -z $colors_file ]]; then
+  colors_file=$(default_colors_file) || {
+    echo "omarchy-screensaver-theme: no colors.toml" >&2
+    exit 1
+  }
+fi
+
+screensaver_theme_from_colors "$colors_file"
+printf '%s\n' "$SCREENSAVER_BG"
+printf '%s\n' "$SCREENSAVER_PALETTE"
+printf '%s\n' "$SCREENSAVER_OSC"
