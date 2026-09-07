@@ -7,6 +7,11 @@ source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/base-test.sh"
 theme=$ROOT/bin/omarchy-screensaver-theme
 [[ -x $theme ]] || fail "omarchy-screensaver-theme is executable"
 
+logo=$ROOT/logo.txt
+[[ $(wc -l <"$logo") == 13 ]] ||
+  fail "default screensaver art is 13 rows so --bands is 3-1-3-2-4" "$(wc -l <"$logo")"
+pass "default screensaver art is 13 rows so --bands is 3-1-3-2-4"
+
 catppuccin=$("$theme" "$ROOT/themes/catppuccin/colors.toml")
 [[ $catppuccin == $'#101019\n#b8cbf5,#a0bff7,#89b4fa,#4c6289,#6a8bc1\nrgb:10/10/19' ]] ||
   fail "catppuccin field ramp is crest, hover, lit, mid, dim" "$catppuccin"
