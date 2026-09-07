@@ -8,17 +8,17 @@ theme=$ROOT/bin/omarchy-screensaver-theme
 [[ -x $theme ]] || fail "omarchy-screensaver-theme is executable"
 
 catppuccin=$("$theme" "$ROOT/themes/catppuccin/colors.toml")
-[[ $catppuccin == $'#101019\n#6a8bc1,#4c6289,#89b4fa,#a0bff7,#b8cbf5\nrgb:10/10/19' ]] ||
-  fail "catppuccin field ramp follows accent toward background and bright_foreground" "$catppuccin"
-pass "catppuccin field ramp follows accent toward background and bright_foreground"
+[[ $catppuccin == $'#101019\n#b8cbf5,#a0bff7,#89b4fa,#4c6289,#6a8bc1\nrgb:10/10/19' ]] ||
+  fail "catppuccin field ramp is crest, hover, lit, mid, dim" "$catppuccin"
+pass "catppuccin field ramp is crest, hover, lit, mid, dim"
 
 latte=$("$theme" "$ROOT/themes/catppuccin-latte/colors.toml")
-[[ $latte == *$'\n#4c82ee,#7a9fe8,#1e66f5,#5e8dec,#9fb5e3\n'* ]] ||
+[[ $latte == *$'\n#9fb5e3,#5e8dec,#1e66f5,#7a9fe8,#4c82ee\n'* ]] ||
   fail "a light theme mixes hover and crest toward background" "$latte"
 pass "a light theme mixes hover and crest toward background"
 
 tokyo=$("$theme" "$ROOT/themes/tokyo-night/colors.toml")
-[[ $tokyo == $'#0e0e14\n#5f7dbe,#445885,#7aa2f7,#92b0f6,#abbef5\nrgb:0e/0e/14' ]] ||
+[[ $tokyo == $'#0e0e14\n#abbef5,#92b0f6,#7aa2f7,#445885,#5f7dbe\nrgb:0e/0e/14' ]] ||
   fail "tokyo-night uses accent, not the site's green brand" "$tokyo"
 pass "tokyo-night uses accent, not the site's green brand"
 
@@ -60,3 +60,28 @@ STUB
 chmod +x "$stub/ttfx"
 ttfx_supports_palette && fail "ttfx --help without --palette is rejected"
 pass "ttfx --help without --palette is rejected"
+
+cat >"$stub/ttfx" <<'STUB'
+#!/bin/bash
+if [[ $1 == --help ]]; then
+  echo "      --palette"
+  echo "      --bands"
+  exit 0
+fi
+printf '%s\n' "$@"
+STUB
+chmod +x "$stub/ttfx"
+ttfx_supports_bands || fail "ttfx --help with --bands is detected"
+pass "ttfx --help with --bands is detected"
+
+cat >"$stub/ttfx" <<'STUB'
+#!/bin/bash
+if [[ $1 == --help ]]; then
+  echo "      --palette"
+  exit 0
+fi
+exit 0
+STUB
+chmod +x "$stub/ttfx"
+ttfx_supports_bands && fail "ttfx --help without --bands is rejected"
+pass "ttfx --help without --bands is rejected"
