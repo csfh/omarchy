@@ -26,6 +26,9 @@ if colors_file=$(default_colors_file) && screensaver_theme_from_colors "$colors_
   osc=$SCREENSAVER_OSC
   if ttfx_supports_palette; then
     theme_args=(--palette "$SCREENSAVER_PALETTE" --terminal-background-color "$SCREENSAVER_BG")
+    if ttfx_supports_bands; then
+      theme_args+=(--bands)
+    fi
   fi
 fi
 

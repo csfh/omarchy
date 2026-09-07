@@ -72,7 +72,7 @@ screensaver_theme_from_colors() {
 
   SCREENSAVER_BG=$background
   SCREENSAVER_LIT=$lit
-  SCREENSAVER_PALETTE="$dim,$mid,$lit,$hover,$crest"
+  SCREENSAVER_PALETTE="$crest,$hover,$lit,$mid,$dim"
   SCREENSAVER_OSC=$(hex_to_osc "$background")
 }
 
@@ -89,6 +89,11 @@ default_colors_file() {
 ttfx_supports_palette() {
   command -v ttfx >/dev/null || return 1
   ttfx --help 2>/dev/null | grep -q -- '--palette'
+}
+
+ttfx_supports_bands() {
+  command -v ttfx >/dev/null || return 1
+  ttfx --help 2>/dev/null | grep -q -- '--bands'
 }
 
 if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
