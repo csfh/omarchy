@@ -273,6 +273,7 @@ build_sheen() {
   # The cell the logo's first row starts on, every attribute fastfetch left on
   # those cells so a glint that has passed leaves them as it found them, and the
   # room it has to work in left of the module column.
+  SHEEN_FIELD_BANDS=1
   sheen_build "$LOGO_FILE" "$LOGO_ROW" "$LOGO_COLUMN" "${ESC}[0m${LOGO_COLOR}" "$(( cols - LOGO_COLUMN + 1 ))"
 }
 

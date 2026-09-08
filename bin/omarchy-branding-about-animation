@@ -48,7 +48,7 @@ compose_frame() {
     to=$(( to < 0 ? 0 : to ))
 
     frame+="${ESC}[$((SHEEN_TOP + row));${SHEEN_LEFT}H"
-    frame+="${SHEEN_BASE}${line:0:from}${SHEEN_BAND}${line:from:to - from}${SHEEN_BASE}${line:to}"
+    frame+="${SHEEN_ROW_SGR[row]:-$SHEEN_BASE}${line:0:from}${SHEEN_BAND}${line:from:to - from}${SHEEN_ROW_SGR[row]:-$SHEEN_BASE}${line:to}"
   done
 
   SHEEN_COMPOSED=$frame
@@ -94,6 +94,30 @@ sheen_build() {
     fi
   done
   (( width > 0 && width <= columns )) || return 1
+
+  SHEEN_ROW_SGR=()
+  if [[ ${SHEEN_FIELD_BANDS:-} == 1 ]]; then
+    local band pal_file
+    local -a palette=()
+    # shellcheck source=omarchy-screensaver-theme
+    source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/omarchy-screensaver-theme"
+    pal_file=$(default_colors_file 2>/dev/null) || true
+    if [[ -n ${pal_file:-} ]] && screensaver_theme_from_colors "$pal_file"; then
+      IFS=',' read -r -a palette <<<"$SCREENSAVER_PALETTE"
+    fi
+    for (( row = 0; row < SHEEN_ROWS; row++ )); do
+      if (( ${#palette[@]} >= 5 )); then
+        band=$(field_band_index_n "$row" "$SHEEN_ROWS")
+        SHEEN_ROW_SGR[row]=$(hex_to_sgr_fg "${palette[band]}")
+      else
+        SHEEN_ROW_SGR[row]=$SHEEN_BASE
+      fi
+    done
+  else
+    for (( row = 0; row < SHEEN_ROWS; row++ )); do
+      SHEEN_ROW_SGR[row]=$SHEEN_BASE
+    done
+  fi
 
   SHEEN_FRAMES=()
   local centre last=$(( width + SHEEN_ROWS * SHEEN_SLANT + SHEEN_HALF ))

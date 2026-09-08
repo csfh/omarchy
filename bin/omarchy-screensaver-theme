@@ -96,6 +96,95 @@ ttfx_supports_bands() {
   ttfx --help 2>/dev/null | grep -q -- '--bands'
 }
 
+# Same Hamilton split ttfx uses: 5-2-4-3-5 over n lines. Prints 0..4.
+field_band_index_n() {
+  local i=$1
+  local n=$2
+
+  awk -v i="$i" -v n="$n" 'BEGIN {
+    u[0]=5; u[1]=2; u[2]=4; u[3]=3; u[4]=5
+    bands=5
+    total=19
+    if (n <= 0) { print 0; exit }
+    if (i < 0) i=0
+    if (i > n-1) i=n-1
+    sum=0
+    for (b=0; b<bands; b++) {
+      exact[b]=n*u[b]/total
+      counts[b]=int(exact[b])
+      sum+=counts[b]
+    }
+    remain=n-sum
+    for (b=0; b<bands; b++) order[b]=b
+    for (a=0; a<bands; a++) {
+      for (b=a+1; b<bands; b++) {
+        fa=exact[order[a]]-int(exact[order[a]])
+        fb=exact[order[b]]-int(exact[order[b]])
+        if (fb>fa || (fb==fa && order[b]<order[a])) {
+          t=order[a]; order[a]=order[b]; order[b]=t
+        }
+      }
+    }
+    for (k=0; k<bands && remain>0; k++) {
+      counts[order[k]]++
+      remain--
+    }
+    if (n>=bands) {
+      while (1) {
+        zero=-1
+        for (b=0; b<bands; b++) if (counts[b]==0) { zero=b; break }
+        if (zero<0) break
+        donor=-1
+        for (b=bands-1; b>=0; b--) if (counts[b]>1) { donor=b; break }
+        if (donor<0) break
+        counts[donor]--
+        counts[zero]++
+      }
+    }
+    acc=0
+    for (b=0; b<bands; b++) {
+      acc+=counts[b]
+      if (i<acc) { print b; exit }
+    }
+    print bands-1
+  }'
+}
+
+hex_to_sgr_fg() {
+  local hex=${1#\#}
+  printf '\033[38;2;%d;%d;%dm' "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+# Paint a text file with one field-band colour per line. Falls back to green.
+print_field_banded_file() {
+  local file=$1
+  local colors_file sgr i n band
+  local -a lines palette
+
+  if [[ ! -f $file ]]; then
+    return 1
+  fi
+
+  mapfile -t lines <"$file"
+  n=${#lines[@]}
+  (( n > 0 )) || return 1
+
+  colors_file=$(default_colors_file 2>/dev/null) || true
+  if [[ -n ${colors_file:-} ]] && screensaver_theme_from_colors "$colors_file"; then
+    IFS=',' read -r -a palette <<<"$SCREENSAVER_PALETTE"
+  fi
+
+  for (( i = 0; i < n; i++ )); do
+    if (( ${#palette[@]} >= 5 )); then
+      band=$(field_band_index_n "$i" "$n")
+      sgr=$(hex_to_sgr_fg "${palette[band]}")
+      printf '%s%s\033[0m\n' "$sgr" "${lines[i]}"
+    else
+      printf '\033[32m%s\033[0m\n' "${lines[i]}"
+    fi
+  done
+}
+
 if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
   return 0
 fi
